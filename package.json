@@ -1,0 +1,31 @@
+{
+    "name": "md-to-images",
+    "version": "1.0.0",
+    "description": "Agentic image generation pipeline for blog articles",
+    "type": "module",
+    "main": "src/index.ts",
+    "scripts": {
+        "start": "tsx --env-file=.env src/index.ts"
+    },
+    "keywords": [
+        "openai",
+        "image-generation",
+        "agents",
+        "typescript"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@openai/agents": "^0.3.9",
+        "openai": "^4.77.0",
+        "zod": "^3.24.1"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.5",
+        "tsx": "^4.21.0",
+        "typescript": "^5.7.2"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    }
+}
