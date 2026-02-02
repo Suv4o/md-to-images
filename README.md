@@ -8,6 +8,8 @@ An agentic image generation pipeline that automatically generates a large set of
 - **Parallel Image Generation**: Generates images concurrently with configurable rate limiting
 - **Style Diversity**: Automatically varies visual styles (playful, cyberpunk, minimal, isometric, etc.)
 - **Brand Colors**: Incorporates your custom color palette into all generated images
+- **Custom Instructions**: Add your own instructions to guide prompt generation (e.g., "Include airplanes in all images")
+- **Reference Image Support**: Provide a reference image for style transfer across all generated images
 - **Retry Logic**: Handles API rate limits with exponential backoff
 - **Progress Tracking**: Real-time progress bar and detailed logging
 
@@ -55,6 +57,41 @@ The pipeline generates:
 
 - **prompts.json** - A JSON file containing all generated prompts for reference
 
+## Custom Instructions
+
+You can provide custom instructions to guide the prompt generation. Create an `instructions.txt` file in the project root:
+
+```bash
+# Create the file
+echo "Make sure each image includes airplanes or aviation-related elements." > instructions.txt
+```
+
+Example instructions:
+
+```
+Make sure each image includes subtle technology-related elements like code snippets,
+terminal windows, or circuit patterns in the background. Focus on developer tools
+and workflows.
+```
+
+The custom instructions will be included when generating prompts, ensuring all 100 images follow your specific requirements.
+
+## Reference Image (Style Transfer)
+
+You can provide a reference image to influence the visual style of all generated images. Place an image file (PNG, JPG, JPEG, or WebP) in the `./reference/` directory:
+
+```bash
+# Add a reference image
+cp my-style-reference.png ./reference/
+```
+
+When a reference image is detected:
+1. The prompt generation agent will instruct each prompt to reference the style
+2. The image generation agent will use the `images.edit()` API with style transfer
+3. All generated images will have a consistent visual style matching your reference
+
+**Note**: Only one reference image is used. If multiple images are in the `./reference/` folder, the first one found will be used.
+
 ## Architecture
 
 ### Agent 1: Prompt Generation Agent
@@ -80,13 +117,26 @@ export const CONFIG = {
     RETRY_DELAY_MS: 2000, // Base delay between retries
     IMAGE_MODEL: "gpt-image-1.5", // Image generation model
     TEXT_MODEL: "gpt-5.2-pro", // Text/prompt generation model
-    IMAGE_SIZE: "1024x1024", // Image dimensions
+    IMAGE_SIZE: "1536x1024", // Image dimensions (landscape for covers)
     IMAGE_QUALITY: "medium", // low | medium | high | auto
     OUTPUT_FORMAT: "png", // png | jpeg | webp
     OUTPUT_DIR: "./output", // Output directory
     PROMPT_COUNT: 100, // Number of prompts to generate
+    COVER_IMAGE_MODE: true, // Generate blog cover/hero images
 };
 ```
+
+### Cover Image Mode
+
+When `COVER_IMAGE_MODE` is set to `true`, all generated images will be optimized for use as blog cover/hero images:
+
+- **Clean compositions** with space for text overlay
+- **Professional look** suitable for tech blogs
+- **Strong focal points** that don't overwhelm
+- **No text in images** (titles go on top separately)
+- **Landscape orientation** optimized for headers
+
+Set to `false` if you want more diverse, general-purpose images.
 
 ### Color Palette
 
@@ -144,6 +194,8 @@ md-to-images/
 │       ├── logger.ts                 # Progress logging
 │       └── rateLimiter.ts            # Concurrency & retry logic
 ├── output/                           # Generated images (gitignored)
+├── reference/                        # Reference image for style transfer (optional)
+├── instructions.txt                  # Custom instructions (optional)
 ├── package.json
 ├── tsconfig.json
 └── .env.example
@@ -170,6 +222,9 @@ md-to-images/
 
 [INFO] Reading markdown file: ./my-blog-article.md
 [SUCCESS] Loaded article (2847 characters)
+[SUCCESS] Loaded custom instructions from ./instructions.txt
+[INFO] Instructions: "Make sure each image includes subtle technology-related elements..."
+[SUCCESS] Found reference image: style-reference.png
 [INFO] Output directory: ./output
 
 [INFO] Phase 1: Generating image prompts...
@@ -178,6 +233,7 @@ md-to-images/
 [INFO] Prompts saved to: ./output/prompts.json
 
 [INFO] Phase 2: Generating images...
+[INFO] Using reference image for style transfer: style-reference.png
 [INFO] Starting image generation for 100 prompts...
 [INFO] Concurrency limit: 5
 [====================] 100/100 (100%) - Complete!

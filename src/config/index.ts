@@ -10,7 +10,10 @@ export const CONFIG = {
     IMAGE_QUALITY: "medium" as ImageQuality,
     OUTPUT_FORMAT: "png" as OutputFormat,
     OUTPUT_DIR: "./output",
-    PROMPT_COUNT: 100,
+    PROMPT_COUNT: 5,
+    INSTRUCTIONS_FILE: "./instructions.txt",
+    REFERENCE_IMAGE_DIR: "./reference",
+    COVER_IMAGE_MODE: true, // When true, generates images suitable for blog cover/hero images
 } as const;
 
 export const COLOR_PALETTE = {

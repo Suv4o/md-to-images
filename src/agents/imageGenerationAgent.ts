@@ -1,8 +1,15 @@
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
+import { readFile } from "node:fs/promises";
+import { extname } from "node:path";
 import { CONFIG } from "../config/index.js";
 import type { ImagePrompt, GeneratedImage } from "../types/index.js";
 import { withRetry, ConcurrencyPool } from "../utils/rateLimiter.js";
-import { saveImage, saveImageFromUrl, generateImageFilename } from "../utils/fileHelpers.js";
+import {
+    saveImage,
+    saveImageFromUrl,
+    generateImageFilename,
+    type ReferenceImage,
+} from "../utils/fileHelpers.js";
 import { logProgress, logProgressComplete, logError, logInfo } from "../utils/logger.js";
 
 const openai = new OpenAI();
@@ -15,16 +22,58 @@ interface ImageGenerationResponse {
     }>;
 }
 
+let referenceImagePath: string | null = null;
+let referenceImageFilename: string | null = null;
+
+export function setReferenceImage(refImage: ReferenceImage | null): void {
+    referenceImagePath = refImage?.path ?? null;
+    referenceImageFilename = refImage?.filename ?? null;
+}
+
+function getMimeType(filename: string): string {
+    const ext = extname(filename).toLowerCase();
+    switch (ext) {
+        case ".png":
+            return "image/png";
+        case ".jpg":
+        case ".jpeg":
+            return "image/jpeg";
+        case ".webp":
+            return "image/webp";
+        default:
+            return "image/png";
+    }
+}
+
 async function generateSingleImage(prompt: ImagePrompt): Promise<GeneratedImage> {
     return withRetry(async () => {
-        const response = (await openai.images.generate({
-            model: CONFIG.IMAGE_MODEL,
-            prompt: prompt.prompt,
-            size: CONFIG.IMAGE_SIZE,
-            quality: CONFIG.IMAGE_QUALITY,
-            output_format: CONFIG.OUTPUT_FORMAT,
-            n: 1,
-        })) as ImageGenerationResponse;
+        let response: ImageGenerationResponse;
+
+        if (referenceImagePath && referenceImageFilename) {
+            // Use images.edit() with reference image for style transfer
+            const imageBuffer = await readFile(referenceImagePath);
+            const mimeType = getMimeType(referenceImageFilename);
+            const imageFile = await toFile(imageBuffer, referenceImageFilename, {
+                type: mimeType,
+            });
+            response = (await openai.images.edit({
+                model: CONFIG.IMAGE_MODEL,
+                image: imageFile,
+                prompt: `Use the same visual style as the reference image. ${prompt.prompt}`,
+                size: CONFIG.IMAGE_SIZE,
+                n: 1,
+            })) as ImageGenerationResponse;
+        } else {
+            // Use images.generate() without reference image
+            response = (await openai.images.generate({
+                model: CONFIG.IMAGE_MODEL,
+                prompt: prompt.prompt,
+                size: CONFIG.IMAGE_SIZE,
+                quality: CONFIG.IMAGE_QUALITY,
+                output_format: CONFIG.OUTPUT_FORMAT,
+                n: 1,
+            })) as ImageGenerationResponse;
+        }
 
         const imageData = response.data[0];
         const filename = generateImageFilename(prompt.id, prompt.style);

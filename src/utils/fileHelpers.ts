@@ -1,6 +1,10 @@
-import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
-import { join, resolve, dirname } from 'node:path';
+import { readFile, writeFile, mkdir, access, readdir } from 'node:fs/promises';
+import { join, resolve, dirname, extname } from 'node:path';
+import { createReadStream } from 'node:fs';
+import type { ReadStream } from 'node:fs';
 import { CONFIG } from '../config/index.js';
+
+const SUPPORTED_IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'];
 
 export async function readMarkdownFile(filePath: string): Promise<string> {
   const absolutePath = resolve(filePath);
@@ -77,4 +81,58 @@ export function generateImageFilename(id: number, style: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
   return `image_${paddedId}_${sanitizedStyle}.${CONFIG.OUTPUT_FORMAT}`;
+}
+
+export async function readCustomInstructions(): Promise<string | null> {
+  try {
+    const absolutePath = resolve(CONFIG.INSTRUCTIONS_FILE);
+    await access(absolutePath);
+    const content = await readFile(absolutePath, 'utf-8');
+    const trimmed = content.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface ReferenceImage {
+  path: string;
+  filename: string;
+  stream: () => ReadStream;
+}
+
+export async function findReferenceImage(): Promise<ReferenceImage | null> {
+  try {
+    const refDir = resolve(CONFIG.REFERENCE_IMAGE_DIR);
+    await access(refDir);
+
+    const files = await readdir(refDir);
+    const imageFile = files.find((file) => {
+      const ext = extname(file).toLowerCase();
+      return SUPPORTED_IMAGE_EXTENSIONS.includes(ext);
+    });
+
+    if (!imageFile) {
+      return null;
+    }
+
+    const imagePath = join(refDir, imageFile);
+    return {
+      path: imagePath,
+      filename: imageFile,
+      stream: () => createReadStream(imagePath),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function readReferenceImageAsBase64(): Promise<string | null> {
+  const refImage = await findReferenceImage();
+  if (!refImage) {
+    return null;
+  }
+
+  const buffer = await readFile(refImage.path);
+  return buffer.toString('base64');
 }
