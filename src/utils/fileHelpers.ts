@@ -83,6 +83,15 @@ export function generateImageFilename(id: number, style: string): string {
   return `image_${paddedId}_${sanitizedStyle}.${CONFIG.OUTPUT_FORMAT}`;
 }
 
+export async function readPromptsFromFile(): Promise<
+  Array<{ id: number; prompt: string; style: string }>
+> {
+  const outputPath = join(CONFIG.OUTPUT_DIR, 'prompts.json');
+  const absolutePath = resolve(outputPath);
+  const content = await readFile(absolutePath, 'utf-8');
+  return JSON.parse(content) as Array<{ id: number; prompt: string; style: string }>;
+}
+
 export async function readCustomInstructions(): Promise<string | null> {
   try {
     const absolutePath = resolve(CONFIG.INSTRUCTIONS_FILE);

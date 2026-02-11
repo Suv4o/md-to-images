@@ -4,6 +4,7 @@ import {
     readMarkdownFile,
     ensureOutputDir,
     savePromptsToFile,
+    readPromptsFromFile,
     readCustomInstructions,
     findReferenceImage,
 } from "./utils/fileHelpers.js";
@@ -13,11 +14,14 @@ import { CONFIG } from "./config/index.js";
 async function main(): Promise<void> {
     const mdFilePath = process.argv[2];
 
-    if (!mdFilePath) {
+    if (!mdFilePath && !CONFIG.SKIP_PROMPT_GENERATION) {
         console.error("Usage: npx tsx src/index.ts <path-to-markdown-file>");
         console.error("");
         console.error("Example:");
         console.error("  npx tsx src/index.ts ./my-blog-article.md");
+        console.error("");
+        console.error("Tip: Set SKIP_PROMPT_GENERATION to true in src/config/index.ts");
+        console.error("     to skip prompt generation and use existing output/prompts.json");
         process.exit(1);
     }
 
@@ -28,10 +32,13 @@ async function main(): Promise<void> {
     console.log("");
 
     try {
-        // Step 1: Read the markdown file
-        logInfo(`Reading markdown file: ${mdFilePath}`);
-        const articleContent = await readMarkdownFile(mdFilePath);
-        logSuccess(`Loaded article (${articleContent.length} characters)`);
+        // Step 1: Read the markdown file (only if generating prompts)
+        let articleContent = "";
+        if (!CONFIG.SKIP_PROMPT_GENERATION) {
+            logInfo(`Reading markdown file: ${mdFilePath}`);
+            articleContent = await readMarkdownFile(mdFilePath!);
+            logSuccess(`Loaded article (${articleContent.length} characters)`);
+        }
 
         // Step 2: Read custom instructions (if available)
         const customInstructions = await readCustomInstructions();
@@ -61,19 +68,28 @@ async function main(): Promise<void> {
         await ensureOutputDir();
         logInfo(`Output directory: ${CONFIG.OUTPUT_DIR}`);
 
-        // Step 6: Generate prompts using Agent 1 (GPT-5.2-Pro)
+        // Step 6: Generate or load prompts
         console.log("");
-        logInfo("Phase 1: Generating image prompts...");
-        const prompts = await generatePrompts({
-            articleContent,
-            customInstructions,
-            hasReferenceImage: !!referenceImage,
-        });
-        logSuccess(`Generated ${prompts.length} image prompts`);
+        let prompts;
 
-        // Save prompts to file for reference
-        const promptsFilePath = await savePromptsToFile(prompts);
-        logInfo(`Prompts saved to: ${promptsFilePath}`);
+        if (CONFIG.SKIP_PROMPT_GENERATION) {
+            logInfo("Phase 1: Skipping prompt generation (SKIP_PROMPT_GENERATION is enabled)");
+            logInfo("Reading prompts from output/prompts.json...");
+            prompts = await readPromptsFromFile();
+            logSuccess(`Loaded ${prompts.length} prompts from output/prompts.json`);
+        } else {
+            logInfo("Phase 1: Generating image prompts...");
+            prompts = await generatePrompts({
+                articleContent,
+                customInstructions,
+                hasReferenceImage: !!referenceImage,
+            });
+            logSuccess(`Generated ${prompts.length} image prompts`);
+
+            // Save prompts to file for reference
+            const promptsFilePath = await savePromptsToFile(prompts);
+            logInfo(`Prompts saved to: ${promptsFilePath}`);
+        }
 
         // Step 7: Generate images using Agent 2 (gpt-image-1.5)
         console.log("");
