@@ -1,5 +1,7 @@
 import { generatePrompts } from "./agents/promptGenerationAgent.js";
+import { generateGeminiPrompts } from "./agents/geminiPromptGenerationAgent.js";
 import { generateAllImages, setReferenceImage } from "./agents/imageGenerationAgent.js";
+import { generateAllGeminiImages, setGeminiReferenceImage } from "./agents/geminiImageGenerationAgent.js";
 import {
     readMarkdownFile,
     ensureOutputDir,
@@ -53,12 +55,21 @@ async function main(): Promise<void> {
         const referenceImage = await findReferenceImage();
         if (referenceImage) {
             logSuccess(`Found reference image: ${referenceImage.filename}`);
-            setReferenceImage(referenceImage);
+            if (CONFIG.IMAGE_PROVIDER === "gemini") {
+                setGeminiReferenceImage(referenceImage);
+            } else {
+                setReferenceImage(referenceImage);
+            }
         } else {
             logInfo(`No reference image found (add an image to ${CONFIG.REFERENCE_IMAGE_DIR}/ for style reference)`);
         }
 
         // Step 4: Show configuration
+        logInfo(`Image provider: ${CONFIG.IMAGE_PROVIDER.toUpperCase()}`);
+        if (CONFIG.IMAGE_PROVIDER === "gemini") {
+            logInfo(`Gemini model: ${CONFIG.GEMINI_IMAGE_MODEL}`);
+            logInfo(`Aspect ratio: ${CONFIG.GEMINI_ASPECT_RATIO}`);
+        }
         if (CONFIG.COVER_IMAGE_MODE) {
             logSuccess("Cover image mode: ENABLED (images will be suitable for blog headers)");
         }
@@ -79,11 +90,14 @@ async function main(): Promise<void> {
             logSuccess(`Loaded ${prompts.length} prompts from output/prompts.json`);
         } else {
             logInfo("Phase 1: Generating image prompts...");
-            prompts = await generatePrompts({
+            const promptOptions = {
                 articleContent,
                 customInstructions,
                 hasReferenceImage: !!referenceImage,
-            });
+            };
+            prompts = CONFIG.IMAGE_PROVIDER === "gemini"
+                ? await generateGeminiPrompts(promptOptions)
+                : await generatePrompts(promptOptions);
             logSuccess(`Generated ${prompts.length} image prompts`);
 
             // Save prompts to file for reference
@@ -91,13 +105,15 @@ async function main(): Promise<void> {
             logInfo(`Prompts saved to: ${promptsFilePath}`);
         }
 
-        // Step 7: Generate images using Agent 2 (gpt-image-1.5)
+        // Step 7: Generate images
         console.log("");
-        logInfo("Phase 2: Generating images...");
+        logInfo(`Phase 2: Generating images with ${CONFIG.IMAGE_PROVIDER.toUpperCase()}...`);
         if (referenceImage) {
             logInfo(`Using reference image for style transfer: ${referenceImage.filename}`);
         }
-        const results = await generateAllImages(prompts);
+        const results = CONFIG.IMAGE_PROVIDER === "gemini"
+            ? await generateAllGeminiImages(prompts)
+            : await generateAllImages(prompts);
 
         // Step 8: Calculate and display summary
         const successful = results.filter((r) => r.success);

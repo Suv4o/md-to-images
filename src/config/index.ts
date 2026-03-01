@@ -1,6 +1,7 @@
-import type { ImageSize, ImageQuality, OutputFormat } from "../types/index.js";
+import type { ImageSize, ImageQuality, OutputFormat, ImageProvider, GeminiAspectRatio } from "../types/index.js";
 
 export const CONFIG = {
+    IMAGE_PROVIDER: "gemini" as ImageProvider, // "openai" or "gemini"
     CONCURRENCY_LIMIT: 5,
     MAX_RETRIES: 3,
     RETRY_DELAY_MS: 2000,
@@ -10,11 +11,15 @@ export const CONFIG = {
     IMAGE_QUALITY: "medium" as ImageQuality,
     OUTPUT_FORMAT: "png" as OutputFormat,
     OUTPUT_DIR: "./output",
-    PROMPT_COUNT: 50,
+    PROMPT_COUNT: 10,
     INSTRUCTIONS_FILE: "./instructions.txt",
     REFERENCE_IMAGE_DIR: "./reference",
     COVER_IMAGE_MODE: true, // When true, generates images suitable for blog cover/hero images
     SKIP_PROMPT_GENERATION: false, // When true, skips prompt generation and reads from output/prompts.json
+    // Gemini-specific config
+    GEMINI_TEXT_MODEL: "gemini-3.1-pro-preview",
+    GEMINI_IMAGE_MODEL: "gemini-3.1-flash-image-preview",
+    GEMINI_ASPECT_RATIO: "16:9" as GeminiAspectRatio,
 } as const;
 
 export const COLOR_PALETTE = {

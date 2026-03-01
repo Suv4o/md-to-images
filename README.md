@@ -1,9 +1,10 @@
 # md-to-images
 
-An agentic image generation pipeline that automatically generates a large set of images for blog articles using OpenAI's GPT-5.2-Pro and gpt-image-1.5.5 models.
+An agentic image generation pipeline that automatically generates a large set of images for blog articles using OpenAI's GPT-5.2-Pro and gpt-image-1.5 models, or Google's Gemini 3.1 Flash Image (Nano Banana 2) model.
 
 ## Features
 
+- **Multi-Provider Support**: Choose between OpenAI (gpt-image-1.5) or Google Gemini (Nano Banana 2) for image generation
 - **Automated Prompt Generation**: Uses GPT-5.2-Pro to analyze your blog article and generate 100 diverse, high-quality image prompts
 - **Parallel Image Generation**: Generates images concurrently with configurable rate limiting
 - **Style Diversity**: Automatically varies visual styles (playful, cyberpunk, minimal, isometric, etc.)
@@ -16,7 +17,8 @@ An agentic image generation pipeline that automatically generates a large set of
 ## Prerequisites
 
 - Node.js v20.0.0 or higher
-- OpenAI API key with access to GPT-5.2-Pro and gpt-image-1.5
+- OpenAI API key with access to GPT-5.2-Pro and gpt-image-1.5 (required for prompt generation, and for image generation when using OpenAI provider)
+- Google API key for Gemini (required when using Gemini provider) — get one at [Google AI Studio](https://aistudio.google.com/app/apikey)
 
 ## Installation
 
@@ -27,9 +29,10 @@ cd md-to-images
 # Install dependencies
 npm install
 
-# Set up your API key
+# Set up your API keys
 cp .env.example .env
-# Edit .env and add your OpenAI API key
+# Edit .env and add your OpenAI API key (required)
+# Add your Google API key if using Gemini provider (optional)
 ```
 
 ## Usage
@@ -100,11 +103,17 @@ When a reference image is detected:
 - **Purpose**: Analyzes the blog article and generates 100 unique image prompts
 - **Output**: Structured JSON array with prompt text and style metadata
 
-### Agent 2: Image Generation Agent
+### Agent 2: Image Generation Agent (OpenAI)
 
 - **Model**: gpt-image-1.5
 - **Purpose**: Generates images from prompts with parallel execution
 - **Features**: Rate limiting, retry logic, base64 decoding, file saving
+
+### Agent 2 (Alternative): Image Generation Agent (Gemini)
+
+- **Model**: gemini-3.1-flash-image-preview (Nano Banana 2)
+- **Purpose**: Generates images from prompts using Google's Gemini API
+- **Features**: Rate limiting, retry logic, configurable aspect ratio, reference image support
 
 ## Configuration
 
@@ -112,10 +121,11 @@ Edit `src/config/index.ts` to customize:
 
 ```typescript
 export const CONFIG = {
+    IMAGE_PROVIDER: "openai", // "openai" or "gemini"
     CONCURRENCY_LIMIT: 5, // Parallel image generation limit
     MAX_RETRIES: 3, // Retry attempts for failed requests
     RETRY_DELAY_MS: 2000, // Base delay between retries
-    IMAGE_MODEL: "gpt-image-1.5", // Image generation model
+    IMAGE_MODEL: "gpt-image-1.5", // OpenAI image generation model
     TEXT_MODEL: "gpt-5.2-pro", // Text/prompt generation model
     IMAGE_SIZE: "1536x1024", // Image dimensions (landscape for covers)
     IMAGE_QUALITY: "medium", // low | medium | high | auto
@@ -123,6 +133,9 @@ export const CONFIG = {
     OUTPUT_DIR: "./output", // Output directory
     PROMPT_COUNT: 100, // Number of prompts to generate
     COVER_IMAGE_MODE: true, // Generate blog cover/hero images
+    // Gemini-specific config
+    GEMINI_IMAGE_MODEL: "gemini-3.1-flash-image-preview", // Nano Banana 2
+    GEMINI_ASPECT_RATIO: "16:9", // 1:1 | 3:4 | 4:3 | 9:16 | 16:9
 };
 ```
 
@@ -137,6 +150,15 @@ When `COVER_IMAGE_MODE` is set to `true`, all generated images will be optimized
 - **Landscape orientation** optimized for headers
 
 Set to `false` if you want more diverse, general-purpose images.
+
+### Image Provider
+
+Set `IMAGE_PROVIDER` to switch between image generation backends:
+
+- **`"openai"`** (default) — Uses OpenAI's gpt-image-1.5 model. Supports `IMAGE_SIZE`, `IMAGE_QUALITY`, and `OUTPUT_FORMAT` settings.
+- **`"gemini"`** — Uses Google's Gemini 3.1 Flash Image (Nano Banana 2) model. Supports `GEMINI_ASPECT_RATIO` setting with options: `1:1`, `3:4`, `4:3`, `9:16`, `16:9`.
+
+Both providers support reference image style transfer and the same concurrency/retry logic.
 
 ### Color Palette
 
@@ -183,8 +205,9 @@ md-to-images/
 ├── src/
 │   ├── index.ts                      # CLI entry point
 │   ├── agents/
-│   │   ├── promptGenerationAgent.ts  # GPT-5.2-Pro prompt generation
-│   │   └── imageGenerationAgent.ts   # gpt-image-1.5 image generation
+│   │   ├── promptGenerationAgent.ts       # GPT-5.2-Pro prompt generation
+│   │   ├── imageGenerationAgent.ts        # OpenAI gpt-image-1.5 image generation
+│   │   └── geminiImageGenerationAgent.ts  # Gemini Nano Banana 2 image generation
 │   ├── config/
 │   │   └── index.ts                  # Configuration constants
 │   ├── types/
@@ -203,9 +226,10 @@ md-to-images/
 
 ## Environment Variables
 
-| Variable         | Description         |
-| ---------------- | ------------------- |
-| `OPENAI_API_KEY` | Your OpenAI API key |
+| Variable         | Description                                          |
+| ---------------- | ---------------------------------------------------- |
+| `OPENAI_API_KEY` | Your OpenAI API key (required)                       |
+| `GOOGLE_API_KEY` | Your Google API key (required when using Gemini provider) |
 
 ## Error Handling
 
