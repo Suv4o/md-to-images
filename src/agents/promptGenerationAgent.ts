@@ -102,7 +102,7 @@ export interface GeneratePromptsOptions {
 export async function generatePrompts(options: GeneratePromptsOptions): Promise<ImagePrompt[]> {
     const { articleContent, customInstructions, hasReferenceImage } = options;
 
-    logInfo("Starting prompt generation with GPT-5.2-Pro...");
+    logInfo(`Starting prompt generation with ${CONFIG.TEXT_MODEL}...`);
 
     const coverModeNote = CONFIG.COVER_IMAGE_MODE
         ? " All images must be suitable for use as blog cover/hero images - clean, professional, with space for text overlay."
