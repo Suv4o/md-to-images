@@ -5,7 +5,7 @@ export const CONFIG = {
     CONCURRENCY_LIMIT: 5,
     MAX_RETRIES: 3,
     RETRY_DELAY_MS: 2000,
-    IMAGE_MODEL: "gpt-image-2",
+    IMAGE_MODEL: "gpt-image-2.5-sunburst",
     TEXT_MODEL: "gpt-5.5-pro",
     IMAGE_SIZE: "1536x1024" as ImageSize,
     IMAGE_QUALITY: "medium" as ImageQuality,
